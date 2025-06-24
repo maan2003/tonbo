@@ -45,6 +45,12 @@ impl DataType {
             DataType::Float32
         } else if path.is_ident("F64") {
             DataType::Float64
+        } else if path.segments.len() == 2
+            && path.segments[0].ident == "bytes"
+            && path.segments[1].ident == "Bytes"
+        {
+            // Handle bytes::Bytes
+            DataType::Bytes
         } else {
             todo!()
         }

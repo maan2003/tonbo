@@ -102,7 +102,7 @@ pub(crate) fn handle(ast: DeriveInput) -> Result<TokenStream, Error> {
         },
         base_ty: primary_key_field.ty.clone(),
         index: primary_key_field_index + 2,
-        fn_key: if matches!(primary_key_data_type.0, DataType::String) {
+        fn_key: if matches!(primary_key_data_type.0, DataType::String | DataType::Bytes) {
             quote!(&self.#primary_key_ident)
         } else {
             quote!(self.#primary_key_ident)

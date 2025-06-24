@@ -1,3 +1,4 @@
+mod bytes;
 mod datetime;
 mod list;
 mod num;
@@ -7,6 +8,7 @@ mod timestamp;
 use std::{hash::Hash, sync::Arc};
 
 use arrow::array::Datum;
+pub use bytes::*;
 pub use datetime::*;
 use fusio_log::{Decode, Encode};
 pub use list::*;
