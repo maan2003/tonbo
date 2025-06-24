@@ -53,6 +53,10 @@ required-features = ["bytes", "tokio"]
 name = "datafusion"
 required-features = ["datafusion"]
 
+[[example]]
+name = "persistence_test"
+required-features = ["bytes", "tokio"]
+
 [[bench]]
 harness = false
 name = "write_bench"
@@ -127,6 +131,7 @@ wasm-bindgen-futures = { version = "0.4.45", optional = true }
 
 [dev-dependencies]
 bincode = "1"
+clap = { version = "4", features = ["derive"] }
 fastrand = "2"
 futures = { version = "0.3" }
 serde = "1"
