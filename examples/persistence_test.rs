@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::{Parser, Subcommand};
 use fusio::path::Path;
 use tokio::fs;
@@ -54,9 +56,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match cli.command {
         Commands::Write { id, value } => {
             println!("Opening database at: {}", cli.db_path);
-            let db = DB::new(options, TokioExecutor::current(), TestRecordSchema).await?;
+            let db = Arc::new(DB::new(options, TokioExecutor::current(), TestRecordSchema).await?);
 
-            println!("Starting transaction...");
+            // Spawn a task that holds a transaction for 30 seconds
+            let db_clone = db.clone();
+            let long_lived_txn_handle = tokio::spawn(async move {
+                println!(
+                    "Spawning long-lived transaction that will hold read lock for 30 seconds..."
+                );
+                let txn = db_clone.transaction().await;
+                println!("Long-lived transaction created, sleeping for 30 seconds...");
+                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+                println!("Long-lived transaction waking up and dropping...");
+                drop(txn);
+                println!("Long-lived transaction dropped");
+            });
+
+            // Give the spawned task time to create its transaction
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+            println!("Starting main transaction...");
             let mut txn = db.transaction().await;
 
             println!("Inserting record: id={}, value={}", id, &value);
@@ -69,6 +88,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             txn.commit().await?;
 
             println!("Transaction committed successfully!");
+
+            println!(
+                "Now attempting to flush WAL (this should block until the long-lived transaction \
+                 releases the read lock)..."
+            );
+            let start = std::time::Instant::now();
+            match db.flush_wal().await {
+                Ok(()) => println!(
+                    "WAL flushed successfully after {:.2} seconds",
+                    start.elapsed().as_secs_f64()
+                ),
+                Err(e) => println!("WAL flush failed: {}", e),
+            }
+
+            // Wait for the long-lived transaction to complete
+            println!("Waiting for long-lived transaction to complete...");
+            long_lived_txn_handle.await?;
+
             println!("now exiting");
         }
         Commands::Read { id } => {
